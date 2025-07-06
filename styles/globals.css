@@ -1,0 +1,293 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  /* Modern Button System */
+  .btn {
+    @apply inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm rounded-lg;
+  }
+  
+  .btn-md {
+    @apply px-4 py-2.5 text-sm rounded-xl;
+  }
+  
+  .btn-lg {
+    @apply px-6 py-3 text-base rounded-xl;
+  }
+  
+  .btn-primary {
+    @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 focus:ring-blue-500;
+  }
+  
+  .btn-ghost {
+    @apply btn text-slate-600 hover:text-slate-900 hover:bg-slate-100 focus:ring-blue-500;
+  }
+  
+  /* Modern Input System */
+  .input {
+    @apply block w-full px-4 py-3 text-slate-900 bg-white border border-slate-200 rounded-xl focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors placeholder:text-slate-400;
+  }
+  
+  .input-sm {
+    @apply px-3 py-2 text-sm rounded-lg;
+  }
+  
+  /* Modern Card System */
+  .card {
+    @apply bg-white rounded-2xl border border-slate-100 p-6;
+  }
+  
+  .card-hover {
+    @apply card transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+  }
+  
+  .card-compact {
+    @apply card p-4;
+  }
+  
+  /* Badge System */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .badge-success {
+    @apply badge bg-emerald-100 text-emerald-800;
+  }
+  
+  .badge-warning {
+    @apply badge bg-amber-100 text-amber-800;
+  }
+  
+  .badge-error {
+    @apply badge bg-red-100 text-red-800;
+  }
+  
+  .badge-info {
+    @apply badge bg-blue-100 text-blue-800;
+  }
+  
+  /* Navigation */
+  .nav-link {
+    @apply flex items-center px-3 py-2.5 text-sm font-medium text-slate-600 rounded-xl transition-all duration-200 hover:text-slate-900 hover:bg-slate-100;
+  }
+  
+  .nav-link-active {
+    @apply nav-link bg-blue-600 text-white hover:bg-blue-700 hover:text-white;
+  }
+  
+  /* Progress */
+  .progress {
+    @apply w-full bg-slate-200 rounded-full h-2;
+  }
+  
+  .progress-fill {
+    @apply h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500;
+  }
+  
+  /* Typography */
+  .heading-xl {
+    @apply text-3xl font-bold text-slate-900 tracking-tight;
+  }
+  
+  .heading-lg {
+    @apply text-2xl font-semibold text-slate-900 tracking-tight;
+  }
+  
+  .heading-md {
+    @apply text-xl font-semibold text-slate-900;
+  }
+  
+  .text-muted {
+    @apply text-slate-500;
+  }
+  
+  .text-subtle {
+    @apply text-slate-400;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  .animate-bounce-in {
+    animation: bounceIn 0.6s ease-out;
+  }
+  
+  .hover-lift {
+    @apply transition-transform duration-200 hover:-translate-y-1;
+  }
+  
+  .shadow-soft {
+    box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 20px -5px rgba(59, 130, 246, 0.15);
+  }
+  
+  .bg-pattern {
+    background-image: 
+      radial-gradient(circle at 25px 25px, rgba(255,255,255,0.1) 2px, transparent 0),
+      radial-gradient(circle at 75px 75px, rgba(255,255,255,0.1) 2px, transparent 0);
+    background-size: 100px 100px;
+  }
+  
+  .bg-gradient-modern {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .bg-gradient-success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  }
+  
+  .bg-gradient-warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  }
+  
+  .bg-gradient-info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+  
+  .glass-effect {
+    backdrop-filter: blur(16px) saturate(180%);
+    background-color: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.125);
+  }
+  
+  .icon-bounce {
+    animation: iconBounce 2s infinite;
+  }
+  
+  .smooth-shadow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .smooth-shadow-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Slack Brand Colors */
+  .bg-slack-green {
+    background-color: rgb(76, 195, 138);
+  }
+  
+  .bg-slack-green-dark {
+    background-color: rgb(54, 156, 108);
+  }
+  
+  .hover\:bg-slack-green-dark:hover {
+    background-color: rgb(54, 156, 108);
+  }
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes iconBounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+} 
