@@ -1,147 +1,122 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Layout from '../components/Layout';
 import ExpenseDetailModal from '../components/ExpenseDetailModal';
-import { useNotifications } from '../hooks';
+import Pagination from '../components/ui/Pagination';
+import SearchFilter from '../components/ui/SearchFilter';
 import { 
-  HistoryIcon, 
   SpinnerIcon, 
   CheckIcon, 
   ClockIcon, 
-  CloseIcon, 
-  DocumentIcon,
-  CurrencyIcon,
   EyeIcon,
   UsersIcon
 } from '../components/Icons';
+import { expenseAPI } from '@/lib/api';
+import { formatNumber } from '../utils/constants';
 
 interface Expense {
-  id: number;
+  id: string;
   title: string;
-  amount: number;
-  qr_url: string;
-  created_at: string;
-  participants: ExpenseParticipant[];
+  description?: string;
+  channelId: string;
+  qrImage?: string;
+  amount?: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  items: ExpenseItem[];
 }
 
-interface ExpenseParticipant {
-  id: number;
-  user_slack_id: string;
-  name: string;
-  status: 'pending' | 'paid';
-  paid_at?: string;
+interface ExpenseItem {
+  userId: string;
+  userConfirmed?: boolean;
+  collectorConfirmed?: boolean;
+  confirmedAt?: Date;
+  note?: string;
+}
+
+interface PaginationData {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+interface OverallStats {
+  total: number;
+  completed: number;
+  pending: number;
+}
+
+interface PaginatedExpensesResponse {
+  data: Expense[];
+  pagination: PaginationData;
+  stats: OverallStats;
+}
+
+interface SearchOptions {
+  title?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export default function History() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [stats, setStats] = useState({
-    total_expenses: 0,
-    total_amount: 0,
-    completed_payments: 0,
-    pending_payments: 0
-  });
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | 'completed' | 'pending'>('all');
-  const [selectedExpenseId, setSelectedExpenseId] = useState<number | null>(null);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchOptions, setSearchOptions] = useState<SearchOptions>({});
+  const [pagination, setPagination] = useState<PaginationData>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+  const [overallStats, setOverallStats] = useState<OverallStats>({
+    total: 0,
+    completed: 0,
+    pending: 0,
+  });
   
-  const { addNotification } = useNotifications();
-
   useEffect(() => {
-    fetchExpenses();
-  }, []);
+    fetchExpenses(currentPage, searchOptions);
+  }, [currentPage]);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = async (page: number = 1, search: SearchOptions = {}) => {
     try {
-      // Mock API call
-      const mockExpenses = [
-        {
-          id: 1,
-          title: 'Tiền cà phê tháng 12',
-          amount: 50000,
-          qr_url: 'https://example.com/qr1',
-          created_at: '2023-12-01T10:00:00Z',
-          participants: [
-            { id: 1, user_slack_id: 'nguyenvana', name: 'Nguyễn Văn A', status: 'paid' as const, paid_at: '2023-12-01T11:00:00Z' },
-            { id: 2, user_slack_id: 'tranthib', name: 'Trần Thị B', status: 'pending' as const },
-            { id: 3, user_slack_id: 'lethic', name: 'Lê Thị C', status: 'paid' as const, paid_at: '2023-12-02T09:00:00Z' },
-          ]
-        },
-        {
-          id: 2,
-          title: 'Tiền ăn trưa team',
-          amount: 120000,
-          qr_url: 'https://example.com/qr2',
-          created_at: '2023-12-02T11:00:00Z',
-          participants: [
-            { id: 4, user_slack_id: 'phamthid', name: 'Phạm Thị D', status: 'paid' as const, paid_at: '2023-12-02T12:00:00Z' },
-            { id: 5, user_slack_id: 'levane', name: 'Lê Văn E', status: 'paid' as const, paid_at: '2023-12-02T13:00:00Z' },
-          ]
-        },
-        {
-          id: 3,
-          title: 'Tiền mua quà Tết',
-          amount: 200000,
-          qr_url: 'https://example.com/qr3',
-          created_at: '2023-12-03T09:00:00Z',
-          participants: [
-            { id: 6, user_slack_id: 'vuthif', name: 'Vũ Thị F', status: 'paid' as const, paid_at: '2023-12-03T10:00:00Z' },
-            { id: 7, user_slack_id: 'dangvang', name: 'Đặng Văn G', status: 'pending' as const },
-            { id: 8, user_slack_id: 'hoangthih', name: 'Hoàng Thị H', status: 'pending' as const },
-          ]
-        },
-        {
-          id: 4,
-          title: 'Tiền sinh nhật team',
-          amount: 80000,
-          qr_url: 'https://example.com/qr4',
-          created_at: '2023-12-04T14:00:00Z',
-          participants: [
-            { id: 9, user_slack_id: 'nguyenvani', name: 'Nguyễn Văn I', status: 'paid' as const, paid_at: '2023-12-04T15:00:00Z' },
-            { id: 10, user_slack_id: 'tranthij', name: 'Trần Thị J', status: 'paid' as const, paid_at: '2023-12-04T16:00:00Z' },
-            { id: 11, user_slack_id: 'levank', name: 'Lê Văn K', status: 'paid' as const, paid_at: '2023-12-04T17:00:00Z' },
-            { id: 12, user_slack_id: 'phamthil', name: 'Phạm Thị L', status: 'pending' as const },
-          ]
-        },
-        {
-          id: 5,
-          title: 'Tiền đóng góp quỹ văn phòng',
-          amount: 150000,
-          qr_url: 'https://example.com/qr5',
-          created_at: '2023-12-05T16:00:00Z',
-          participants: [
-            { id: 13, user_slack_id: 'hoangvanm', name: 'Hoàng Văn M', status: 'pending' as const },
-            { id: 14, user_slack_id: 'nguyenthin', name: 'Nguyễn Thị N', status: 'pending' as const },
-            { id: 15, user_slack_id: 'vuvanp', name: 'Vũ Văn P', status: 'pending' as const },
-          ]
-        }
-      ];
-
-      setExpenses(mockExpenses);
-      
-      // Calculate stats
-      const totalAmount = mockExpenses.reduce((sum, e) => sum + e.amount * e.participants.length, 0);
-      const completedPayments = mockExpenses.reduce((sum, e) => sum + e.participants.filter(p => p.status === 'paid').length * e.amount, 0);
-      const pendingPayments = mockExpenses.reduce((sum, e) => sum + e.participants.filter(p => p.status === 'pending').length * e.amount, 0);
-      
-      setStats({
-        total_expenses: mockExpenses.length,
-        total_amount: totalAmount,
-        completed_payments: completedPayments,
-        pending_payments: pendingPayments
-      });
-      
+      setLoading(true);
+      const response: PaginatedExpensesResponse = await expenseAPI.getAllExpenses(page, 10, search);
+      setExpenses(response.data);
+      setPagination(response.pagination);
+      setOverallStats(response.stats);
     } catch (error) {
-      addNotification({
-        type: 'error',
-        title: 'Lỗi tải dữ liệu',
-        message: 'Không thể tải danh sách đợt thu tiền. Vui lòng thử lại.'
-      });
+      console.error('Error fetching expenses:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewDetails = (expenseId: number) => {
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleSearch = (newSearchOptions: SearchOptions) => {
+    setSearchOptions(newSearchOptions);
+    setCurrentPage(1); // Reset to first page when searching
+    fetchExpenses(1, newSearchOptions);
+  };
+
+  const handleViewDetails = (expenseId: string) => {
     setSelectedExpenseId(expenseId);
     setShowModal(true);
   };
@@ -151,41 +126,51 @@ export default function History() {
     setSelectedExpenseId(null);
   };
 
+  const handleExpenseUpdate = (updatedExpense: Expense) => {
+    setExpenses(prevExpenses => 
+      prevExpenses.map(expense => 
+        expense.id === updatedExpense.id ? updatedExpense : expense
+      )
+    );
+  };
+
   // Filter expenses based on status
   const filteredExpenses = expenses.filter(expense => {
     if (filterStatus === 'all') return true;
     if (filterStatus === 'completed') {
-      return expense.participants.every(p => p.status === 'paid');
+      return expense.items.every(item => item.userConfirmed && item.collectorConfirmed);
     }
     if (filterStatus === 'pending') {
-      return expense.participants.some(p => p.status === 'pending');
+      return expense.items.some(item => !item.userConfirmed || !item.collectorConfirmed);
     }
     return true;
   });
 
   // Calculate completion percentage for each expense
   const getCompletionPercentage = (expense: Expense) => {
-    const paidCount = expense.participants.filter(p => p.status === 'paid').length;
-    return Math.round((paidCount / expense.participants.length) * 100);
+    if (expense.items.length === 0) return 0;
+    const paidCount = expense.items.filter((item) => item.userConfirmed && item.collectorConfirmed).length;
+    return Math.round((paidCount / expense.items.length) * 100);
   };
 
-  // Calculate how much is collected for each expense
-  const getCollectedAmount = (expense: Expense) => {
-    const paidCount = expense.participants.filter(p => p.status === 'paid').length;
-    return paidCount * expense.amount;
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
   };
 
-  // Calculate total expected amount for each expense
-  const getTotalExpectedAmount = (expense: Expense) => {
-    return expense.participants.length * expense.amount;
-  };
+  // Calculate filter tab counts for current page data
+  const currentPageCompleted = expenses.filter(e => e.items.every(i => i.userConfirmed && i.collectorConfirmed)).length;
+  const currentPagePending = expenses.filter(e => e.items.some(i => !i.userConfirmed || !i.collectorConfirmed)).length;
 
-  if (loading) {
+  if (loading && currentPage === 1 && !expenses.length) {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="text-center">
-          <SpinnerIcon className="h-8 w-8 text-blue-600 mx-auto" />
-          <p className="mt-4 text-muted">Đang tải dữ liệu...</p>
+          <SpinnerIcon className="h-8 w-8 text-blue-600 mx-auto animate-spin" />
+          <p className="mt-4 text-gray-600">Đang tải...</p>
         </div>
       </div>
     );
@@ -194,197 +179,186 @@ export default function History() {
   return (
     <>
       <Head>
-        <title>Lịch sử - Politetech Expense Tracker</title>
+        <title>Lịch sử giao dịch - PolitePay</title>
         <meta name="description" content="Xem lại tất cả các đợt thu tiền đã thực hiện" />
       </Head>
       
-      <div>
+      <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="heading-xl mb-2">Lịch sử đợt thu</h1>
-          <p className="text-muted">Xem lại tất cả các đợt thu tiền đã thực hiện</p>
-        </div>
-
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="card">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                <DocumentIcon className="w-5 h-5 text-slate-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-subtle text-sm">Tổng đợt thu</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.total_expenses}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <CurrencyIcon className="w-5 h-5 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-subtle text-sm">Tổng tiền</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.total_amount.toLocaleString('vi-VN')}</p>
-                <p className="text-xs text-subtle">VND</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <CheckIcon className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-subtle text-sm">Đã thu</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.completed_payments.toLocaleString('vi-VN')}</p>
-                <p className="text-xs text-subtle">VND</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                <ClockIcon className="w-5 h-5 text-amber-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-subtle text-sm">Còn lại</p>
-                <p className="text-2xl font-bold text-slate-900">{stats.pending_payments.toLocaleString('vi-VN')}</p>
-                <p className="text-xs text-subtle">VND</p>
-              </div>
-            </div>
+        <div className="bg-white shadow-sm sticky top-0 z-10">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <h1 className="text-xl font-bold text-gray-900">Lịch sử giao dịch</h1>
           </div>
         </div>
 
-        {/* Filter Buttons */}
-        <div className="flex space-x-2 mb-6">
-          <button
-            onClick={() => setFilterStatus('all')}
-            className={`btn ${filterStatus === 'all' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-          >
-            Tất cả ({expenses.length})
-          </button>
-          <button
-            onClick={() => setFilterStatus('completed')}
-            className={`btn ${filterStatus === 'completed' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-          >
-            Hoàn thành ({expenses.filter(e => e.participants.every(p => p.status === 'paid')).length})
-          </button>
-          <button
-            onClick={() => setFilterStatus('pending')}
-            className={`btn ${filterStatus === 'pending' ? 'btn-primary' : 'btn-secondary'} btn-sm`}
-          >
-            Chưa hoàn thành ({expenses.filter(e => e.participants.some(p => p.status === 'pending')).length})
-          </button>
-        </div>
+        <div className="max-w-4xl mx-auto p-4">
+          {/* Search Filter */}
+          <SearchFilter onSearch={handleSearch} loading={loading} />
 
-        {/* Expenses List */}
-        <div className="space-y-4">
-          {filteredExpenses.length === 0 ? (
-            <div className="card text-center py-12">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <DocumentIcon className="w-8 h-8 text-slate-400" />
+          {/* Quick Stats */}
+          <div className="bg-white rounded-2xl p-4 mb-6 shadow-sm">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{overallStats.total}</p>
+                <p className="text-sm text-gray-600">Tổng đợt thu</p>
               </div>
-              <h3 className="heading-md mb-2">Không có đợt thu nào</h3>
-              <p className="text-muted">Không tìm thấy đợt thu nào phù hợp với bộ lọc hiện tại</p>
+              <div>
+                <p className="text-2xl font-bold text-green-600">
+                  {overallStats.completed}
+                </p>
+                <p className="text-sm text-gray-600">Hoàn thành</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-orange-600">
+                  {overallStats.pending}
+                </p>
+                <p className="text-sm text-gray-600">Đang chờ</p>
+              </div>
             </div>
-          ) : (
-            filteredExpenses.map((expense) => {
-              const completionPercentage = getCompletionPercentage(expense);
-              const collectedAmount = getCollectedAmount(expense);
-              const totalExpectedAmount = getTotalExpectedAmount(expense);
-              const paidCount = expense.participants.filter(p => p.status === 'paid').length;
-              const totalCount = expense.participants.length;
+          </div>
 
-              return (
-                <div key={expense.id} className="card-hover">
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="heading-md mb-1">{expense.title}</h3>
-                        <p className="text-sm text-muted mb-3">
-                          {new Date(expense.created_at).toLocaleDateString('vi-VN', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                        
-                        <div className="flex items-center space-x-4 text-sm">
-                          <div className="flex items-center">
-                            <UsersIcon className="w-4 h-4 text-slate-500 mr-1" />
-                            <span className="text-muted">{totalCount} người</span>
-                          </div>
-                          <div className="flex items-center">
-                            <CurrencyIcon className="w-4 h-4 text-slate-500 mr-1" />
-                            <span className="text-muted">{expense.amount.toLocaleString('vi-VN')} VND/người</span>
+          {/* Filter Tabs */}
+          <div className="flex bg-white rounded-2xl p-1 mb-6 shadow-sm">
+            <button
+              onClick={() => setFilterStatus('all')}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${
+                filterStatus === 'all' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Tất cả ({expenses.length})
+            </button>
+            <button
+              onClick={() => setFilterStatus('pending')}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${
+                filterStatus === 'pending' 
+                  ? 'bg-orange-600 text-white' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Đang chờ ({currentPagePending})
+            </button>
+            <button
+              onClick={() => setFilterStatus('completed')}
+              className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium transition-all ${
+                filterStatus === 'completed' 
+                  ? 'bg-green-600 text-white' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Hoàn thành ({currentPageCompleted})
+            </button>
+          </div>
+
+          {/* Loading state for pagination */}
+          {loading && (
+            <div className="flex justify-center py-4">
+              <SpinnerIcon className="h-6 w-6 text-blue-600 animate-spin" />
+            </div>
+          )}
+
+          {/* Expenses List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+            {filteredExpenses.length === 0 ? (
+              <div className="col-span-full bg-white rounded-2xl p-12 text-center shadow-sm">
+                <div className="text-gray-400 mb-4">
+                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Không có giao dịch nào</h3>
+                <p className="text-gray-600">
+                  {Object.keys(searchOptions).length > 0 && Object.values(searchOptions).some(v => v)
+                    ? 'Không tìm thấy giao dịch nào phù hợp với bộ lọc'
+                    : filterStatus === 'all' 
+                      ? 'Chưa có đợt thu tiền nào được tạo' 
+                      : `Không có giao dịch nào ${filterStatus === 'completed' ? 'hoàn thành' : 'đang chờ'} trên trang này`
+                  }
+                </p>
+              </div>
+            ) : (
+              filteredExpenses.map((expense) => {
+                const completionPercentage = getCompletionPercentage(expense);
+                const paidCount = expense.items.filter(i => i.userConfirmed && i.collectorConfirmed).length;
+                const totalCount = expense.items.length;
+
+                return (
+                  <div key={expense.id} className="bg-white rounded-xl p-3 shadow-sm hover:shadow-md transition-all">
+                    <div className="space-y-3">
+                      {/* Header */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-900 truncate text-sm">{expense.title}</h3>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <p className="text-xs text-gray-500">{formatDate(expense.createdAt)}</p>
+                            <div className="flex items-center text-xs text-gray-500">
+                              <UsersIcon className="w-3 h-3 mr-1" />
+                              <span>{totalCount}</span>
+                            </div>
+                            {expense.amount && (
+                              <div className="text-green-600 font-semibold text-lg">
+                                {formatNumber(expense.amount)}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-slate-900">
-                          {collectedAmount.toLocaleString('vi-VN')} VND
-                        </p>
-                        <p className="text-sm text-muted">
-                          / {totalExpectedAmount.toLocaleString('vi-VN')} VND
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="mb-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-muted">Tiến độ</span>
-                        <span className="text-sm font-medium text-slate-900">{completionPercentage}%</span>
-                      </div>
-                      <div className="progress">
-                        <div 
-                          className="progress-fill" 
-                          style={{ width: `${completionPercentage}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Status badges and actions */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex gap-2">
+                        
                         {completionPercentage === 100 ? (
-                          <span className="badge-success">
+                          <div className="flex items-center text-green-600 bg-green-100 px-2 py-1 rounded-md">
                             <CheckIcon className="w-3 h-3 mr-1" />
-                            Hoàn thành
-                          </span>
-                        ) : completionPercentage > 0 ? (
-                          <span className="badge-info">
-                            <ClockIcon className="w-3 h-3 mr-1" />
-                            Đang thu ({paidCount}/{totalCount})
-                          </span>
+                            <span className="text-xs font-medium">Xong</span>
+                          </div>
                         ) : (
-                          <span className="badge-warning">
-                            <CloseIcon className="w-3 h-3 mr-1" />
-                            Chưa bắt đầu
-                          </span>
+                          <div className="flex items-center text-orange-600 bg-orange-100 px-2 py-1 rounded-md">
+                            <ClockIcon className="w-3 h-3 mr-1" />
+                            <span className="text-xs font-medium">Chờ</span>
+                          </div>
                         )}
                       </div>
-                      
-                      <button
-                        onClick={() => handleViewDetails(expense.id)}
-                        className="btn btn-ghost btn-sm"
-                      >
-                        <EyeIcon className="w-4 h-4 mr-1" />
-                        Chi tiết
-                      </button>
+
+                      {/* Progress Bar */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-12 bg-gray-200 rounded-full h-1.5">
+                              <div 
+                                className={`h-1.5 rounded-full transition-all ${
+                                  completionPercentage === 100 ? 'bg-green-500' : 'bg-blue-500'
+                                }`}
+                                style={{ width: `${completionPercentage}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium text-gray-600">
+                              {paidCount}/{totalCount}
+                            </span>
+                          </div>
+                          
+                          <button
+                            onClick={() => handleViewDetails(expense.id)}
+                            className="flex items-center text-blue-600 bg-blue-50 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors"
+                          >
+                            <EyeIcon className="w-3 h-3 mr-1" />
+                            <span className="text-xs font-medium">Chi tiết</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={handlePageChange}
+            showInfo={true}
+            total={pagination.total}
+            limit={pagination.limit}
+          />
         </div>
 
         {/* Modal */}
@@ -393,6 +367,7 @@ export default function History() {
             expenseId={selectedExpenseId}
             isOpen={showModal}
             onClose={handleCloseModal}
+            onExpenseUpdate={handleExpenseUpdate}
           />
         )}
       </div>

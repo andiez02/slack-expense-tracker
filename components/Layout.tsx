@@ -1,17 +1,23 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useAuth } from '../contexts/AuthContext';
-import { 
-  DashboardIcon, 
-  CreateIcon, 
-  HistoryIcon, 
-  SettingsIcon, 
-  MenuIcon, 
+import {
+  DashboardIcon,
+  CreateIcon,
+  HistoryIcon,
+  SettingsIcon,
+  MenuIcon,
   CloseIcon,
-  UserIcon,
   CompanyLogo
 } from './Icons';
+import { useAuth } from '@/contexts/AuthContext';
+
+// Ranking Icon Component
+const RankingIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+  </svg>
+);
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,35 +27,17 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const router = useRouter();
-  const { user, logout } = useAuth();
-
-  // Mock data fallback nếu user chưa load
-  const mockUser = {
-    id: '1',
-    username: 'admin',
-    name: 'Admin User',
-    email: 'admin@politetech.com',
-    teamName: 'PoliteTech Team',
-    avatar: '',
-    isAdmin: true,
-    timezone: 'Asia/Ho_Chi_Minh',
-    locale: 'vi',
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
-  };
-
-  const currentUser = user || mockUser;
+  const { currentUser, logout } = useAuth();
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: DashboardIcon, current: router.pathname === '/' },
+    { name: 'Dashboard', href: '/dashboard', icon: DashboardIcon, current: router.pathname === '/dashboard' },
     { name: 'Tạo đợt thu', href: '/create', icon: CreateIcon, current: router.pathname === '/create' },
     { name: 'Lịch sử', href: '/history', icon: HistoryIcon, current: router.pathname === '/history' },
     { name: 'Cài đặt', href: '/settings', icon: SettingsIcon, current: router.pathname === '/settings' },
   ];
 
   const handleLogout = async () => {
-    setUserMenuOpen(false);
-    await logout();
+    await logout(true);
   };
 
   return (
@@ -58,7 +46,7 @@ export default function Layout({ children }: LayoutProps) {
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
         <div className="flex flex-col flex-grow bg-white border-r border-slate-200">
           {/* Logo */}
-          <div className="flex items-center px-6 py-6">
+          <a href="/ranking" className="flex items-center px-6 py-6 hover:bg-gray-50 transition-colors">
             <div className="flex items-center">
               <CompanyLogo className="w-8 h-8" />
               <div className="flex flex-col text-center">
@@ -66,8 +54,8 @@ export default function Layout({ children }: LayoutProps) {
                 <span className="ml-3 text-sm font-light italic text-slate-500">caigiaphaitra</span>
               </div>
             </div>
-          </div>
-          
+          </a>
+
           {/* Navigation */}
           <nav className="flex-1 px-4 space-y-1">
             {navigation.map((item) => {
@@ -88,7 +76,7 @@ export default function Layout({ children }: LayoutProps) {
               );
             })}
           </nav>
-          
+
           {/* User */}
           <div className="p-4 border-t border-slate-100">
             <div className="relative">
@@ -113,13 +101,13 @@ export default function Layout({ children }: LayoutProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              
+
               {/* User Dropdown */}
               {userMenuOpen && (
                 <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-lg border border-slate-200 py-2">
                   <div className="px-4 py-2 border-b border-slate-100">
                     <p className="text-sm font-medium text-slate-900">{currentUser?.name}</p>
-                    <p className="text-xs text-slate-500">{currentUser?.teamName || 'Workspace'}</p>
+                    <p className="text-xs text-slate-500">{currentUser?.slackTeamName || 'Workspace'}</p>
                   </div>
                   <button
                     onClick={handleLogout}
@@ -148,7 +136,7 @@ export default function Layout({ children }: LayoutProps) {
                 <CloseIcon className="w-6 h-6 text-white" />
               </button>
             </div>
-            
+
             <div className="flex-1 h-0 pt-6 pb-4 overflow-y-auto">
               {/* Mobile Logo */}
               <div className="flex items-center px-6 mb-6">
@@ -158,7 +146,7 @@ export default function Layout({ children }: LayoutProps) {
                   <span className="ml-3 text-sm font-light italic text-slate-500">caigiaphaitra</span>
                 </div>
               </div>
-              
+
               {/* Mobile Navigation */}
               <nav className="px-4 space-y-1">
                 {navigation.map((item) => {
@@ -197,7 +185,7 @@ export default function Layout({ children }: LayoutProps) {
               <span className="sr-only">Open sidebar</span>
               <MenuIcon className="w-5 h-5" />
             </button>
-            
+
             <div className="flex items-center">
               <CompanyLogo className="w-6 h-6" />
               <div className="flex flex-col">
@@ -207,7 +195,7 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           </div>
         </div>
-        
+
         {/* Main content */}
         <main className="flex-1 p-6">
           {children}

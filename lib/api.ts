@@ -1,177 +1,104 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { API_ENDPOINTS, HTTP_STATUS, ERROR_MESSAGES, STORAGE_KEYS } from '../constants';
-import { 
-  ApiResponse, 
-  PaginatedResponse, 
-  AuthResponse, 
-  User, 
-  Expense, 
-  ExpenseStats,
-  SlackUser,
-  UserSettings,
-  CreateExpenseFormData,
-  UpdateExpenseFormData,
-  ExpenseFilter,
-  SortOptions,
-  LoginCredentials,
-  RegisterCredentials
-} from '../types';
-
-// API Error class for better error handling
-export class ApiError extends Error {
-  public statusCode: number;
-  public data: any;
-  public isNetworkError: boolean;
-  
-  constructor(
-    message: string,
-    statusCode: number = 500,
-    data: any = null,
-    isNetworkError: boolean = false
-  ) {
-    super(message);
-    this.name = 'ApiError';
-    this.statusCode = statusCode;
-    this.data = data;
-    this.isNetworkError = isNetworkError;
-  }
-}
-
-// Create axios instance with default configuration
-const createApiInstance = (): AxiosInstance => {
-  const instance = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || '',
-    timeout: 30000,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  
-  // Request interceptor to add auth token
-  instance.interceptors.request.use(
-    (config) => {
-      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => Promise.reject(error)
-  );
-  
-  // Response interceptor for error handling
-  instance.interceptors.response.use(
-    (response) => response,
-    async (error: AxiosError) => {
-      const { response, request } = error;
-      
-      // Network error
-      if (!response) {
-        throw new ApiError(
-          ERROR_MESSAGES.NETWORK,
-          0,
-          null,
-          true
-        );
-      }
-      
-      // HTTP error responses
-      const { status, data } = response;
-      
-      switch (status) {
-        case HTTP_STATUS.UNAUTHORIZED:
-          localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-          localStorage.removeItem(STORAGE_KEYS.USER_DATA);
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-          }
-          throw new ApiError(ERROR_MESSAGES.UNAUTHORIZED, status, data);
-          
-        case HTTP_STATUS.FORBIDDEN:
-          throw new ApiError(ERROR_MESSAGES.FORBIDDEN, status, data);
-          
-        case HTTP_STATUS.NOT_FOUND:
-          throw new ApiError(ERROR_MESSAGES.NOT_FOUND, status, data);
-          
-        case HTTP_STATUS.INTERNAL_SERVER_ERROR:
-          throw new ApiError(ERROR_MESSAGES.SERVER_ERROR, status, data);
-          
-        default:
-          const errorMessage = (data as any)?.message || ERROR_MESSAGES.SERVER_ERROR;
-          throw new ApiError(errorMessage, status, data);
-      }
-    }
-  );
-  
-  return instance;
-};
-
-// Create API instance
-const api = createApiInstance();
-
-// Generic API request function with retry logic
-async function apiRequest<T>(
-  request: () => Promise<AxiosResponse<T>>,
-  retryCount = 0
-): Promise<T> {
-  try {
-    const response = await request();
-    return response.data;
-  } catch (error) {
-    if (error instanceof ApiError && !error.isNetworkError) {
-      throw error;
-    }
-    
-    if (retryCount < 3) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return apiRequest(request, retryCount + 1);
-    }
-    
-    throw error;
-  }
-}
+import authorizedAxiosInstance from '@/utils/authorizedAxios';
+import { API_ROOT } from '@/utils/constants';
 
 // Auth API
 export const authAPI = {
-  /**
-   * Login with username and password
-   */
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    return apiRequest(() => api.post(API_ENDPOINTS.AUTH.LOGIN, credentials));
+  refreshToken: async () => {
+    const response = await authorizedAxiosInstance.post(
+      `${API_ROOT}/auth/refresh_token`
+    );
+    return response.data;
+  },
+};
+
+// User API
+export const userAPI = {
+  getMemberBySlackId: async (slackId: string) => {
+    const response = await authorizedAxiosInstance.get(`${API_ROOT}/users/${slackId}`);
+    return response.data;
+  },
+  getMe: async () => {
+    const response = await authorizedAxiosInstance.get(`${API_ROOT}/users/me`);
+    return response.data;
+  },
+};
+
+// Dashboard API
+export const dashboardAPI = {
+  getDashboard: async () => {
+    const response = await authorizedAxiosInstance.get(`${API_ROOT}/dashboard`);
+    return response.data;
+  },
+};
+
+// Slackbot API
+export const slackbotAPI = {
+  getJoinedChannels: async () => {
+    const response = await authorizedAxiosInstance.get(`${API_ROOT}/slackbot/joined_channels`);
+    return response.data;
+  },
+  getJoinedChannelMembers: async (channelId: string) => {
+    const response = await authorizedAxiosInstance.get(`${API_ROOT}/slackbot/joined_channels/${channelId}/members`);
+    return response.data;
+  },
+  sendMessage: async (channel: string, text: string) => {
+    const response = await authorizedAxiosInstance.post(`${API_ROOT}/slackbot/send-message`, { channel, text });
+    return response.data;
   },
 
-  /**
-   * Register new user
-   */
-  register: async (data: RegisterCredentials): Promise<AuthResponse> => {
-    return apiRequest(() => api.post(API_ENDPOINTS.AUTH.REGISTER, data));
+};
+
+export const expenseAPI = {
+  createExpense: async (data: any) => {
+    const response = await authorizedAxiosInstance.post(`${API_ROOT}/expense/create`, data);
+    return response.data;
+  },
+  
+  getAllExpenses: async (
+    page: number = 1, 
+    limit: number = 10, 
+    searchOptions: { title?: string; dateFrom?: string; dateTo?: string } = {}
+  ) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+
+    // Add search parameters if provided
+    if (searchOptions.title) {
+      params.append('title', searchOptions.title);
+    }
+    if (searchOptions.dateFrom) {
+      params.append('dateFrom', searchOptions.dateFrom);
+    }
+    if (searchOptions.dateTo) {
+      params.append('dateTo', searchOptions.dateTo);
+    }
+
+    const response = await authorizedAxiosInstance.get(`${API_ROOT}/expense/all?${params.toString()}`);
+    return response.data;
   },
 
-  /**
-   * Get current user information
-   */
-  getCurrentUser: async (): Promise<ApiResponse<User>> => {
-    return apiRequest(() => api.get(API_ENDPOINTS.AUTH.CURRENT_USER));
+  getRanking: async () => {
+    const response = await authorizedAxiosInstance.get(`${API_ROOT}/expense/ranking`);
+    return response.data;
   },
 
-  /**
-   * Logout user
-   */
-  logout: async (): Promise<ApiResponse<void>> => {
-    return apiRequest(() => api.post(API_ENDPOINTS.AUTH.LOGOUT));
+  getExpenseById: async (id: string) => {
+    const response = await authorizedAxiosInstance.get(`${API_ROOT}/expense/${id}`);
+    return response.data;
   },
 
-  /**
-   * Validate JWT token
-   */
-  validateToken: async (token: string): Promise<ApiResponse<{ valid: boolean; user: User }>> => {
-    return apiRequest(() => api.post(API_ENDPOINTS.AUTH.VALIDATE_TOKEN, { token }));
+  confirmPaymentViaWeb: async (expenseId: string, payerUserId: string) => {
+    const response = await authorizedAxiosInstance.post(`${API_ROOT}/expense/confirm-payment`, {
+      expenseId,
+      payerUserId,
+    });
+    return response.data;
   },
 
-  /**
-   * Get team members
-   */
-  getTeamMembers: async (): Promise<ApiResponse<User[]>> => {
-    return apiRequest(() => api.get(API_ENDPOINTS.AUTH.TEAM_MEMBERS));
+  getPendingConfirmations: async () => {
+    const response = await authorizedAxiosInstance.get(`${API_ROOT}/expense/pending-confirmations`);
+    return response.data;
   },
 };

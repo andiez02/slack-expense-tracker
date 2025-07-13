@@ -5,10 +5,9 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
-  teamName?: string;
+  qrImage?: string;
+  slackTeamName?: string;
   isAdmin: boolean;
-  timezone?: string;
-  locale?: string;
   created_at: string;
   updated_at: string;
 }
@@ -70,16 +69,8 @@ export interface PaginatedResponse<T = unknown> {
 }
 
 // Auth types
-export interface AuthResponse {
-  success: boolean;
-  token?: string;
-  user?: User;
-  message?: string;
-  error?: string;
-}
-
 export interface LoginCredentials {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -88,11 +79,6 @@ export interface RegisterCredentials {
   email: string;
   password: string;
   name: string;
-}
-
-export interface SlackAuthData {
-  code: string;
-  state?: string;
 }
 
 // Form types
@@ -245,4 +231,14 @@ export interface UseMutationResult<T, V> {
   loading: boolean;
   error: Error | null;
   data: T | null;
+}
+
+export interface ExpenseItem {
+  userId: string;
+  note?: string;
+  userConfirmed?: boolean;
+  collectorConfirmed?: boolean;
+  confirmedAt?: Date;
+  slackMessageTs?: string;
+  slackChannel?: string;
 } 

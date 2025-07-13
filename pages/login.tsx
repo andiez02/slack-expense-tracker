@@ -1,61 +1,41 @@
-import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { CompanyLogo, SlackIcon, SpinnerIcon } from '../components/Icons';
+// import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
+// import { LoginCredentials } from '../types';
+// import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
-import { useAuth } from '../contexts/AuthContext';
-import { useNotifications } from '../hooks';
-import { CompanyLogo, SpinnerIcon } from '../components/Icons';
-import { Button, Input } from '../components/ui';
-import { LoginCredentials } from '../types';
-import { authAPI } from '../lib/api';
+// import { toast } from 'react-toastify';
+
+// import { EMAIL_RULE, EMAIL_RULE_MESSAGE, FIELD_REQUIRED_MESSAGE } from '@/utils/validators';
+import { API_ROOT } from '@/utils/constants';
 
 export default function Login() {
-  const [formData, setFormData] = useState<LoginCredentials>({
-    username: '',
-    password: '',
-  });
-  const [loading, setLoading] = useState(false);
+
   const router = useRouter();
-  const { login, isAuthenticated } = useAuth();
-  const { addNotification } = useNotifications();
+  // const { register, handleSubmit, formState: { errors } } = useForm<LoginCredentials>();
 
-  useEffect(() => {
-    // Check if user is already logged in
-    if (isAuthenticated) {
-      router.push('/');
-    }
-  }, [router, isAuthenticated]);
+  // const onSubmitLogin = async (data: LoginCredentials) => {
+  //   const {email, password} = data;
+  //   toast.promise(
+  //     dispatch(loginUserAPI({email, password})),
+  //     {
+  //       pending: 'Đang đăng nhập...',
+  //     }
+  //   ).then((res: any) => {
+  //     if (!res.error) router.push('/')
+  //   })
+  // }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const response = await authAPI.login(formData);
-      if (response.success && response.token && response.user) {
-        login(response.token, response.user);
-        addNotification({
-          type: 'success',
-          title: 'Đăng nhập thành công',
-          message: 'Chào mừng bạn trở lại!'
-        });
-        router.push('/');
-      }
-    } catch (error: any) {
-      addNotification({
-        type: 'error',
-        title: 'Lỗi đăng nhập',
-        message: error.message || 'Tên đăng nhập hoặc mật khẩu không đúng'
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleSlackLogin = () => {
+    // Get the intended destination from query params or default to home
+    const { redirect } = router.query;
+    const redirectTo = redirect && typeof redirect === 'string' ? redirect : '/';
+    const currentUrl = `${window.location.origin}${redirectTo}`;
+    const slackAuthUrl = `${API_ROOT}/auth/slack?state=${encodeURIComponent(currentUrl)}`;
+    window.location.href = slackAuthUrl;
   };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
+  
   return (
     <>
       <Head>
@@ -78,6 +58,15 @@ export default function Login() {
             </p>
           </div>
 
+          {/* Error Message */}
+          {router.query.error === 'slack_oauth_failed' && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-red-800 text-sm">
+                Đăng nhập Slack thất bại. Vui lòng thử lại.
+              </p>
+            </div>
+          )}
+
           {/* Login Form */}
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
             <div className="text-center mb-8">
@@ -85,30 +74,49 @@ export default function Login() {
                 Chào mừng trở lại!
               </h2>
               <p className="text-slate-600">
-                Đăng nhập để tiếp tục
+                Đăng nhập với Slack để tiếp tục
               </p>
             </div>
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Slack Login Button */}
+            <Button
+              type="button"
+              onClick={handleSlackLogin}
+              className="w-full flex items-center justify-center gap-3 bg-slack hover:bg-slack-dark text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+              style={{ backgroundColor: '#4A154B' }}
+            >
+              <SlackIcon className="w-5 h-5" />
+              Đăng nhập với Slack
+            </Button>
+
+            {/* Comment out traditional login form */}
+            {/*
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-slate-500">Hoặc</span>
+              </div>
+            </div>
+
+            <form className="space-y-2" onSubmit={handleSubmit(onSubmitLogin)}>
               <Input
-                label="Tên đăng nhập"
-                name="username"
+                label="Email"
                 type="text"
                 required
-                value={formData.username}
-                onChange={handleChange}
-                placeholder="johndoe"
+                {...register('email', { required: FIELD_REQUIRED_MESSAGE, pattern: {value: EMAIL_RULE, message: EMAIL_RULE_MESSAGE} })}
               />
+              {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
 
               <Input
                 label="Mật khẩu"
-                name="password"
                 type="password"
                 required
-                value={formData.password}
-                onChange={handleChange}
+                {...register('password', { required: FIELD_REQUIRED_MESSAGE })}
                 placeholder="••••••••"
               />
+              {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
 
               <div className="flex items-center justify-between">
                 <div className="text-sm">
@@ -126,18 +134,11 @@ export default function Login() {
               <Button
                 type="submit"
                 className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
-                loading={loading}
               >
-                {loading ? (
-                  <>
-                    <SpinnerIcon className="w-5 h-5 text-white" />
-                    <span>Đang đăng nhập...</span>
-                  </>
-                ) : (
-                  <span>Đăng nhập</span>
-                )}
+                Đăng nhập
               </Button>
             </form>
+            */}
 
             <div className="mt-6 text-center">
               <p className="text-xs text-slate-500">

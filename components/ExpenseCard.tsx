@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckIcon, ClockIcon, EyeIcon } from './Icons';
+import { formatCurrency } from '../utils/constants';
 
 interface ExpenseParticipant {
   id: number;
@@ -46,9 +47,13 @@ export default function ExpenseCard({ expense, onViewDetails }: ExpenseCardProps
             </p>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-slate-900">
-              {expense.amount.toLocaleString('vi-VN')} VND
-            </p>
+            {expense.amount && (
+              <div className="flex items-center text-green-600 mt-2">
+                <span className="text-sm font-semibold">
+                  {formatCurrency(expense.amount)}
+                </span>
+              </div>
+            )}
             <p className="text-sm text-muted">mỗi người</p>
           </div>
         </div>
